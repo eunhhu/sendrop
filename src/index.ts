@@ -104,8 +104,8 @@ io.on('connection', (socket: Socket) => {
     });
 
     // 파일 전송 이벤트
-    socket.on('sendFile', ({ targetId, fileName, fileContent, chunkIndex, totalChunk }) => {
-        io.to(targetId).emit('receiveFile', { fileName, fileContent, chunkIndex, totalChunk });
+    socket.on('sendFile', ({ targetId, fileName, fileContent, chunkIndex, totalChunks }) => {
+        io.to(targetId).emit('receiveFile', { fileName, fileContent, chunkIndex, totalChunks });
     });
 
     // 텍스트 전송 이벤트

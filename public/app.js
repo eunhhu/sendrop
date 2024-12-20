@@ -15,8 +15,6 @@ const fileInput = document.getElementById('fileInput');
 const formMessage = document.getElementById('formMessage');
 
 const sendButton = document.getElementById('sendButton');
-const acceptButton = document.getElementById('acceptButton');
-const rejectButton = document.getElementById('rejectButton');
 const copyButton = document.getElementById('copyButton');
 
 let selectedDeviceId = null;
@@ -51,28 +49,61 @@ overlay.addEventListener('mousedown', (event) => {
 });
 
 socket.on('receiveFileRequest', ({ sender, senderId, fileName }) => {
-    showOverlay('requestform');
-    document.getElementById('requestMessage').textContent = `${sender} wants to send you a file: ${fileName}`;
+    addAlert(`File request from ${sender} for ${fileName}`, 'request');
     requestType = "file";
     requestFrom = senderId;
 });
 
 socket.on('receiveTextRequest', ({ sender, senderId, text }) => {
-    showOverlay('requestform');
-    document.getElementById('requestMessage').textContent = `${sender} wants to send you a text`;
+    addAlert(`Text request from ${sender}`, 'request');
     requestType = "text";
     requestFrom = senderId;
 });
 
-acceptButton.addEventListener('click', (event) => {
-    socket.emit(requestType === "text" ? 'acceptText' : 'acceptFile', { targetId: requestFrom });
-    hideOverlay();
-});
-
-rejectButton.addEventListener('click', (event) => {
-    socket.emit(requestType === "text" ? 'rejectText' : 'rejectFile', { targetId: requestFrom })
-    hideOverlay();
-})
+function addAlert(message, type) {
+    const alert = document.createElement('div')
+    alert.classList.add('alert');
+    const col = document.createElement('div');
+    col.classList.add('col');
+    const alertMessage = document.createElement('p');
+    alertMessage.textContent = message;
+    col.appendChild(alertMessage);
+    switch (type) {
+        case 'request':
+            const row = document.createElement('div');
+            row.classList.add('row');
+            const acceptButton = document.createElement('button');
+            acceptButton.textContent = 'Accept';
+            acceptButton.addEventListener('click', (event) => {
+                socket.emit(requestType === "text" ? 'acceptText' : 'acceptFile', { targetId: requestFrom });
+                alert.remove();
+            }, {once: true});
+            const rejectButton = document.createElement('button');
+            rejectButton.textContent = 'Reject';
+            rejectButton.addEventListener('click', (event) => {
+                socket.emit(requestType === "text" ? 'rejectText' : 'rejectFile', { targetId: requestFrom });
+                alert.remove();
+            }, {once: true});
+            row.appendChild(acceptButton);
+            row.appendChild(rejectButton);
+            col.appendChild(row);
+            break;
+        case 'progress':
+            const progressBar = document.createElement('div');
+            progressBar.classList.add('progress-bar');
+            const progressFill = document.createElement('div');
+            progressBar.appendChild(progressFill);
+            col.appendChild(progressBar);
+            break;
+        default:
+            const closeButton = document.createElement('button');
+            closeButton.textContent = 'Close';
+            closeButton.addEventListener('click', (event) => {
+                alert.remove();
+            }, {once: true});
+            break;
+    }
+}
 
 socket.on('receiveText', ({ text }) => {
     showOverlay('messageform')
@@ -87,9 +118,8 @@ copyButton.addEventListener('click', e => {
 
 let fileChunks = [];
 socket.on('receiveFile', ({ fileName, fileContent, chunkIndex, totalChunks }) => {
-    showOverlay('messageform')
+    addAlert(`Receiving ${fileName} (${chunkIndex + 1}/${totalChunks})`, 'progress');
     fileChunks[chunkIndex] = fileContent;
-    formMessage.textContent = `Download ${fileName} (${chunkIndex + 1}/${totalChunks})`
     if (fileChunks.length === totalChunks) {
         const blob = new Blob(fileChunks);
         const url = URL.createObjectURL(blob);
@@ -142,21 +172,31 @@ sendButton.addEventListener('click', (event) => {
 
     if (tab === 'text') {
         if (!text.trim()) {
-            alert('No text entered');
+            addAlert('No text entered', 'error');
             return;
         }
         socket.emit('requestText', { targetId })
+        socket.once('receiveTextReject', () => {
+            addAlert('Text transfer rejected', 'error');
+            socket.removeAllListeners('receiveTextAccept');
+        });
         socket.once('receiveTextAccept', () => {
+            socket.removeAllListeners('receiveTextReject');
             socket.emit('sendText', { targetId, text });
         })
     } else if (tab === 'file') {
         if (!file) {
-            alert('No file selected');
+            addAlert('No file selected', 'error');
             return;
         }
         socket.emit('requestFile', { targetId, fileName: file.name })
-        socket.once('receiveTextAccept', () => {
-            const chunkSize = 1024 * 1024; // 1MB per chunk
+        socket.once('receiveFileReject', () => {
+            addAlert('File transfer rejected', 'error');
+            socket.removeAllListeners('receiveFileAccept');
+        })
+        socket.once('receiveFileAccept', () => {
+            socket.removeAllListeners('receiveFileReject');
+            const chunkSize = 1024 * 4; // 4KB per chunk
             const totalChunks = Math.ceil(file.size / chunkSize);
             const reader = new FileReader();
             let chunkIndex = 0;
@@ -184,4 +224,6 @@ sendButton.addEventListener('click', (event) => {
             loadNextChunk();
         })
     }
+    addAlert('Request sent', 'info');
+    hideOverlay();
 });
