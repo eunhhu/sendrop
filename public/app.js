@@ -1,7 +1,14 @@
 const socket = io();
 
+function socketLog(...args){
+  socket.emit("log", ...args);
+};
+
+const timeoutMs = 3000;
+
 const deviceList = document.getElementById('deviceList');
 const overlay = document.getElementById('overlay');
+const alerts = document.getElementById('alerts');
 
 const textSelection = document.getElementById('textSelection');
 const fileSelection = document.getElementById('fileSelection');
@@ -54,13 +61,16 @@ socket.on('receiveFileRequest', ({ sender, senderId, fileName }) => {
     requestFrom = senderId;
 });
 
-socket.on('receiveTextRequest', ({ sender, senderId, text }) => {
+socket.on('receiveTextRequest', ({ sender, senderId }) => {
     addAlert(`Text request from ${sender}`, 'request');
     requestType = "text";
     requestFrom = senderId;
 });
 
-function addAlert(message, type) {
+function addAlert(message, type, timeout = timeoutMs, del = false, progress = 0) {
+    if(del) Array.from(alerts.children).forEach((child, i) => {
+        if(i === alerts.children.length - 1) child.remove();
+    })
     const alert = document.createElement('div')
     alert.classList.add('alert');
     const col = document.createElement('div');
@@ -93,6 +103,7 @@ function addAlert(message, type) {
             progressBar.classList.add('progress-bar');
             const progressFill = document.createElement('div');
             progressBar.appendChild(progressFill);
+            progressFill.style.width = `${progress * 100}%`
             col.appendChild(progressBar);
             break;
         default:
@@ -101,8 +112,14 @@ function addAlert(message, type) {
             closeButton.addEventListener('click', (event) => {
                 alert.remove();
             }, {once: true});
+            col.append(closeButton);
             break;
     }
+    alert.append(col);
+    alerts.append(alert);
+    setTimeout(() => {
+        if(alert) alert.remove()
+    }, timeout);
 }
 
 socket.on('receiveText', ({ text }) => {
@@ -118,7 +135,7 @@ copyButton.addEventListener('click', e => {
 
 let fileChunks = [];
 socket.on('receiveFile', ({ fileName, fileContent, chunkIndex, totalChunks }) => {
-    addAlert(`Receiving ${fileName} (${chunkIndex + 1}/${totalChunks})`, 'progress');
+    addAlert(`Receiving ${fileName} (${chunkIndex + 1}/${totalChunks})`, 'progress', true, (chunkIndex + 1) / totalChunks);
     fileChunks[chunkIndex] = fileContent;
     if (fileChunks.length === totalChunks) {
         const blob = new Blob(fileChunks);
@@ -215,6 +232,7 @@ sendButton.addEventListener('click', (event) => {
             };
     
             const loadNextChunk = () => {
+                addAlert(`Sending file (${chunkIndex}/${totalChunks})`, 'progress', true, chunkIndex / totalChunks)
                 const start = chunkIndex * chunkSize;
                 const end = Math.min(start + chunkSize, file.size);
                 const blob = file.slice(start, end);

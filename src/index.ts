@@ -65,10 +65,12 @@ io.on('connection', (socket: Socket) => {
     const userAgent = `${osMatch ? osMatch[1] : 'Unknown OS'} - ${browserMatch ? browserMatch[0] : 'Unknown Browser'} - ${isMobile}`;
     const ip = socket.handshake.address; // IP 주소 가져오기
 
-    console.log(`Device connected: ${ip} - ${userAgent}`);
-
     // 기기 정보 저장
     connectedDevices[socket.id] = { ip, userAgent };
+
+    socket.on("log", (...args) => {
+        console.log(...args);
+    });
 
     // 접속된 모든 기기에 업데이트
     io.emit('updateDevices', connectedDevices);
@@ -115,7 +117,6 @@ io.on('connection', (socket: Socket) => {
 
     // 연결 해제 처리
     socket.on('disconnect', () => {
-        console.log(`Device disconnected: ${socket.id}`);
         delete connectedDevices[socket.id];
         io.emit('updateDevices', connectedDevices);
     });

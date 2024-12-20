@@ -167,3 +167,12 @@ input[type="file"]{
     background-color: #20202b;
     border-radius: 5px;
 }
+
+@keyframes popup {
+    0%{
+        transform: translate(100%, 0);
+    }
+    100%{
+        transform: translate(0, 0);
+    }
+}
