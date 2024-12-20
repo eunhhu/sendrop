@@ -135,7 +135,8 @@ copyButton.addEventListener('click', e => {
 
 let fileChunks = [];
 socket.on('receiveFile', ({ fileName, fileContent, chunkIndex, totalChunks }) => {
-    addAlert(`Receiving ${fileName} (${chunkIndex + 1}/${totalChunks})`, 'progress', true, (chunkIndex + 1) / totalChunks);
+    if ( chunkIndex < totalChunks ) addAlert(`Receiving ${fileName} (${chunkIndex + 1}/${totalChunks})`, 'progress', true, (chunkIndex + 1) / totalChunks);
+    else addAlert(`File received (${totalChunks}/${totalChunks})`, 'info');
     fileChunks[chunkIndex] = fileContent;
     if (fileChunks.length === totalChunks) {
         const blob = new Blob(fileChunks);
@@ -229,11 +230,13 @@ sendButton.addEventListener('click', (event) => {
                 chunkIndex++;
                 if (chunkIndex < totalChunks) {
                     loadNextChunk();
+                } else {
+                    addAlert(`File sent (${totalChunks}/${totalChunks})`, 'info');
                 }
             };
     
             const loadNextChunk = () => {
-                addAlert(`Sending file (${chunkIndex}/${totalChunks})`, 'progress', true, chunkIndex / totalChunks)
+                addAlert(`Sending file (${chunkIndex+1}/${totalChunks})`, 'progress', true, (chunkIndex + 1) / totalChunks)
                 const start = chunkIndex * chunkSize;
                 const end = Math.min(start + chunkSize, file.size);
                 const blob = file.slice(start, end);
