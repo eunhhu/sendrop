@@ -4,8 +4,6 @@ function socketLog(...args){
   socket.emit("log", ...args);
 };
 
-const timeoutMs = 3000;
-
 const deviceList = document.getElementById('deviceList');
 const overlay = document.getElementById('overlay');
 const alerts = document.getElementById('alerts');
@@ -119,9 +117,6 @@ function addAlert(message, type, del = false, progress = 0) {
     }
     alert.append(col);
     alerts.append(alert);
-    setTimeout(() => {
-        if(alert) alert.remove()
-    }, timeout);
 }
 
 socket.on('receiveText', ({ text }) => {
