@@ -117,6 +117,9 @@ function addAlert(message, type, del = false, progress = 0) {
     }
     alert.append(col);
     alerts.append(alert);
+    if(type === 'info') setTimeout(() => {
+        alert.remove();
+    }, 3000)
 }
 
 socket.on('receiveText', ({ text }) => {
@@ -196,6 +199,7 @@ sendButton.addEventListener('click', (event) => {
         });
         socket.once('receiveTextAccept', () => {
             socket.removeAllListeners('receiveTextReject');
+            addAlert('Text transfer accepted', 'info');
             socket.emit('sendText', { targetId, text });
         })
     } else if (tab === 'file') {
