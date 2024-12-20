@@ -32,7 +32,9 @@ let requestFrom = null;
 socket.on('updateDevices', (devices) => {
     deviceList.innerHTML = '';
 
-    Object.entries(devices).forEach(([id, { userAgent, ip }]) => {
+    Object.entries(devices)
+    .filter(([id, { userAgent, ip }]) => id !== socket.id)
+    .forEach(([id, { userAgent, ip }]) => {
         const listItem = document.createElement('div');
         listItem.classList.add('device');
         listItem.textContent = `${userAgent} (${ip})`;
@@ -67,7 +69,7 @@ socket.on('receiveTextRequest', ({ sender, senderId }) => {
     requestFrom = senderId;
 });
 
-function addAlert(message, type, timeout = timeoutMs, del = false, progress = 0) {
+function addAlert(message, type, del = false, progress = 0) {
     if(del) Array.from(alerts.children).forEach((child, i) => {
         if(i === alerts.children.length - 1) child.remove();
     })
