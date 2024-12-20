@@ -7,29 +7,49 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>Connected Devices</h1>
-    <ul id="deviceList"></ul>
-    <form id="sendForm">
-        <label for="targetDevice">Target Device:</label>
-        <select id="targetDevice" required></select>
-
-        <label for="dataType">Type:</label>
-        <select id="dataType">
-            <option value="text">Text</option>
-            <option value="file">File</option>
-        </select>
-
-        <div id="textInput" style="display: none;">
-            <textarea id="textMessage" placeholder="Enter your message"></textarea>
+    <div id="deviceList"></div>
+    <div id="overlay" style="display: none;">
+        <div id="sendform" style="display: none;">
+            <div class="container">
+                <div class="buttons">
+                    <button id="textSelection">Text</button>
+                    <button id="fileSelection">File</button>
+                </div>
+                <div class="content">
+                    <div id="onText">
+                        <textarea name="" id="textInput" placeholder="Enter the messages"></textarea>
+                    </div>
+                    <div id="onFile" style="display: none;">
+                        <label for="fileInput">Select a file</label>
+                        <input type="file" id="fileInput">
+                    </div>
+                </div>
+                <button id="sendButton">Send</button>
+            </div>
         </div>
-
-        <div id="fileInput" style="display: none;">
-            <input type="file" id="fileUpload" multiple>
+        <div id="requestform" style="display: none;">
+            <div class="container">
+                <div class="content">
+                    <p id="requestMessage"></p>
+                </div>
+                <div class="buttons">
+                    <button id="acceptButton">Accept</button>
+                    <button id="rejectButton">Reject</button>
+                </div>
+            </div>
         </div>
-
-        <button type="submit">Send</button>
-    </form>
-
+        <div id="messageform" style="display: none;">
+            <div class="container">
+                <div class="content">
+                    <textarea id="formMessage"></textarea>
+                    <button id="copyButton">Copy</button>
+                </div>
+            </div>
+        </div>
+        <!-- <div id="progressBar">
+            <div id="progressFill"></div>
+        </div> -->
+    </div>
     <script src="/socket.io/socket.io.js"></script>
     <script src="app.js"></script>
 </body>

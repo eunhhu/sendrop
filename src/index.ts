@@ -75,17 +75,17 @@ io.on('connection', (socket: Socket) => {
 
     // 파일 전송 요청
     socket.on('requestFile', ({ targetId, fileName }) => {
-        io.to(targetId).emit('receiveFileRequest', { fileName, sender: connectedDevices[socket.id].userAgent });
+        io.to(targetId).emit('receiveFileRequest', { fileName, sender: connectedDevices[socket.id].userAgent, senderId: socket.id });
     });
 
     // 텍스트 전송 요청
     socket.on('requestText', ({ targetId }) => {
-        io.to(targetId).emit('receiveTextRequest', { sender: connectedDevices[socket.id].userAgent });
+        io.to(targetId).emit('receiveTextRequest', { sender: connectedDevices[socket.id].userAgent, senderId: socket.id });
     });
 
     // 파일 전송 수락
-    socket.on('acceptFile', ({ targetId, fileName }) => {
-        io.to(targetId).emit('receiveFileAccept', { fileName });
+    socket.on('acceptFile', ({ targetId }) => {
+        io.to(targetId).emit('receiveFileAccept');
     });
 
     // 텍스트 전송 수락
@@ -94,8 +94,8 @@ io.on('connection', (socket: Socket) => {
     });
 
     // 파일 전송 거부
-    socket.on('rejectFile', ({ targetId, fileName }) => {
-        io.to(targetId).emit('receiveFileReject', { fileName });
+    socket.on('rejectFile', ({ targetId }) => {
+        io.to(targetId).emit('receiveFileReject');
     });
 
     // 텍스트 전송 거부
