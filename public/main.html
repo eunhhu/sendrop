@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sendrop</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Connected Devices</h1>
+    <ul id="deviceList"></ul>
+    <form id="sendForm">
+        <label for="targetDevice">Target Device:</label>
+        <select id="targetDevice" required></select>
+
+        <label for="dataType">Type:</label>
+        <select id="dataType">
+            <option value="text">Text</option>
+            <option value="file">File</option>
+        </select>
+
+        <div id="textInput" style="display: none;">
+            <textarea id="textMessage" placeholder="Enter your message"></textarea>
+        </div>
+
+        <div id="fileInput" style="display: none;">
+            <input type="file" id="fileUpload" multiple>
+        </div>
+
+        <button type="submit">Send</button>
+    </form>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

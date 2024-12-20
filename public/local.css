@@ -1,0 +1,23 @@
+@import url('global.css');
+
+body{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+img{
+    --size: min(50vw, 50vh);
+    width: var(--size);
+    height: var(--size);
+}
+
+p{
+    font-size: min(5vw, 5vh);
+}
+
+a{
+    text-decoration: underline;
+    color: skyblue;
+}
