@@ -56,6 +56,7 @@ app.get('/', async (req, res) => {
     }
 });
 
+
 // Socket.IO 이벤트 처리
 io.on('connection', (socket: Socket) => {
     const userAgentAll = socket.handshake.headers['user-agent']; // User-Agent 정보 가져오기
@@ -121,6 +122,7 @@ io.on('connection', (socket: Socket) => {
         io.emit('updateDevices', connectedDevices);
     });
 });
+
 
 server.listen(PORT, () => {
     console.log(`[*] Server running on port 127.0.0.1:${PORT}`);
