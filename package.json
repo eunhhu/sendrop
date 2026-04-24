@@ -1,17 +1,33 @@
 {
   "name": "sendrop",
   "version": "1.0.0",
-  "description": "file &amp; text share service",
+  "description": "LAN file & text sharing service over Socket.IO with QR-code pairing",
   "main": "dist/index.js",
   "scripts": {
     "start": "ts-node src/index.ts",
     "dev": "nodemon --exec ts-node src/index.ts",
     "build": "tsc -p .",
+    "typecheck": "tsc --noEmit",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "file-sharing",
+    "airdrop",
+    "socket.io",
+    "qrcode",
+    "lan",
+    "peer-to-peer"
+  ],
+  "author": "eunhhu",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/eunhhu/sendrop.git"
+  },
+  "bugs": {
+    "url": "https://github.com/eunhhu/sendrop/issues"
+  },
+  "homepage": "https://github.com/eunhhu/sendrop#readme",
   "dependencies": {
     "express": "^4.21.2",
     "qrcode": "^1.5.4",

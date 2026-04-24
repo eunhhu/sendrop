@@ -128,17 +128,27 @@ socket.on('receiveText', ({ text }) => {
     // window.navigator.clipboard.writeText(text);
 })
 
-copyButton.addEventListener('click', e => {
-    window.navigator.clipboard.writeText(formMessage)
-    new Clipboard().writeText(formMessage)
+copyButton.addEventListener('click', async () => {
+    const text = formMessage.value;
+    try {
+        await navigator.clipboard.writeText(text);
+        addAlert('Copied to clipboard', 'info');
+    } catch {
+        // fallback for insecure contexts / older browsers
+        formMessage.select();
+        document.execCommand('copy');
+        addAlert('Copied to clipboard', 'info');
+    }
 })
 
 let fileChunks = [];
+let receivedChunks = 0;
 socket.on('receiveFile', ({ fileName, fileContent, chunkIndex, totalChunks }) => {
-    if ( chunkIndex < totalChunks ) addAlert(`Receiving ${fileName} (${chunkIndex + 1}/${totalChunks})`, 'progress', true, (chunkIndex + 1) / totalChunks);
-    else addAlert(`File received (${totalChunks}/${totalChunks})`, 'info');
+    addAlert(`Receiving ${fileName} (${chunkIndex + 1}/${totalChunks})`, 'progress', true, (chunkIndex + 1) / totalChunks);
     fileChunks[chunkIndex] = fileContent;
-    if (fileChunks.length === totalChunks) {
+    receivedChunks++;
+    if (receivedChunks === totalChunks) {
+        addAlert(`File received (${totalChunks}/${totalChunks})`, 'info', true);
         const blob = new Blob(fileChunks);
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -147,6 +157,7 @@ socket.on('receiveFile', ({ fileName, fileContent, chunkIndex, totalChunks }) =>
         a.click();
         URL.revokeObjectURL(url);
         fileChunks = [];
+        receivedChunks = 0;
     }
 })
 
