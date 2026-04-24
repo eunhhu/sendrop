@@ -7,9 +7,14 @@ import os from 'os';
 
 const app = express();
 const server = http.createServer(app);
-const io = new SocketIOServer(server);
+const MAX_HTTP_BUFFER = Number(process.env.SENDROP_MAX_BUFFER) || 64 * 1024 * 1024;
+const io = new SocketIOServer(server, {
+    // File chunks go through socket.io; bump the per-message limit so larger
+    // individual chunks do not get dropped.
+    maxHttpBufferSize: MAX_HTTP_BUFFER,
+});
 
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 interface ConnectedDevice {
     ip: string | string[] | undefined;
@@ -124,6 +129,36 @@ io.on('connection', (socket: Socket) => {
 });
 
 
+function lanAddresses(): string[] {
+    const addrs: string[] = [];
+    const ifaces = os.networkInterfaces();
+    for (const iface of Object.values(ifaces)) {
+        if (!iface) continue;
+        for (const alias of iface) {
+            if (alias.family === 'IPv4' && !alias.internal) {
+                addrs.push(`http://${alias.address}:${PORT}`);
+            }
+        }
+    }
+    return addrs;
+}
+
 server.listen(PORT, () => {
-    console.log(`[*] Server running on port 127.0.0.1:${PORT}`);
+    console.log(`[*] Sendrop listening on :${PORT}`);
+    const addrs = lanAddresses();
+    if (addrs.length > 0) {
+        console.log('[*] Reachable at:');
+        for (const a of addrs) console.log(`      ${a}`);
+    } else {
+        console.log(`[*] Open http://localhost:${PORT}/ in your browser`);
+    }
 });
+
+const shutdown = (signal: string) => {
+    console.log(`received ${signal}, shutting down...`);
+    io.close();
+    server.close(() => process.exit(0));
+    setTimeout(() => process.exit(1), 5000).unref();
+};
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
