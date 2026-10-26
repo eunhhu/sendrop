@@ -2,7 +2,7 @@
 
 # sendrop
 
-**Zero-setup LAN file & text sharing with a QR-code pairing step.**
+**Zero-setup LAN file & text sharing between browsers, with QR-code pairing.**
 
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
@@ -11,54 +11,51 @@
 
 </div>
 
----
+sendrop is a small Node.js + Socket.IO server that lets devices on the same Wi-Fi network send text snippets or files to each other through a browser — one device runs the server, the others open the printed LAN URL. It is meant for people who want an AirDrop-like hand-off across phones and laptops without installing anything on the clients.
 
-## Overview
-
-`sendrop` is a lightweight Node.js + Socket.IO server that lets two or more
-devices on the same Wi-Fi network send text snippets or files to each other
-through a browser. One device runs the server, every other device connects
-to the printed LAN URL (a QR code is shown on the server's localhost page to
-make that one-tap-easy), and devices become visible to each other as soon as
-they open the page.
+**Status:** Maintained — the text/file relay works end to end; there is no test suite, no authentication and no encryption, so use it on trusted networks only.
 
 ## Features
 
-- **QR-pairing at `/` on localhost** — the server prints a QR code pointing
-  at its own LAN URL, so a phone can join instantly.
-- **Device discovery** — every connected browser shows up in a live list
-  with OS / browser / form-factor labels.
-- **Text transfers** — select a device, type or paste a message, the
-  recipient gets an **Accept / Reject** prompt, then a pop-up with a
-  one-click **Copy** button.
-- **File transfers** — chunked transfers with a live progress bar on both
-  sides; completed files are auto-downloaded on the receiver.
-- **No install on the clients** — they only need a browser and the URL.
-- **Configurable** — `PORT` and `SENDROP_MAX_BUFFER` environment variables.
+- **QR pairing** — opening `/` on the host (`localhost`) renders a QR code and link pointing at the server's LAN address.
+- **Device discovery** — every connected browser appears in a live device list labelled by OS / browser / form factor.
+- **Text transfers** — pick a device, paste text, the recipient gets an Accept / Reject prompt and then a pop-up with a Copy button.
+- **File transfers** — files are sent in 4 KB chunks with a progress bar on both ends; the receiver reassembles and auto-downloads the file.
+- **Nothing stored** — the server only forwards events; no text or file content is written to disk or logged.
+- **Graceful shutdown** on `SIGINT` / `SIGTERM`.
 
 ## How it works
 
 ```
 ┌────────────┐       Socket.IO        ┌────────────┐
-│  Device A  │ ────────────────────► │            │
-│ (browser)  │ ◄──── relays ──────── │   Server   │
+│  Device A  │ ────────────────────►  │            │
+│ (browser)  │ ◄──── relays ────────  │   Server   │
 └────────────┘                        │  (sendrop) │
 ┌────────────┐                        │            │
-│  Device B  │ ◄─────────────────── ► │            │
+│  Device B  │ ◄──────────────────►   │            │
 └────────────┘                        └────────────┘
 ```
 
-All traffic is **relayed through the server**; there is no WebRTC P2P step.
-Files are split into chunks (default 4 KB) and streamed over the same
-Socket.IO channel. The server only forwards events — it never persists
-any text or file content to disk.
+- `src/index.ts` starts an Express app that serves `public/` and a Socket.IO server on the same port. On `GET /` from `localhost` it picks the first non-internal IPv4 interface and renders `http://<lan-ip>:<port>` as a QR code; any other host is redirected to `main.html`.
+- On `connection` the server stores the socket's IP and User-Agent in an in-memory `connectedDevices` map and broadcasts `updateDevices` to everyone.
+- Transfers are a request/accept handshake: `requestText` / `requestFile` → `receiveTextRequest` / `receiveFileRequest` on the target → `acceptText` / `acceptFile` (or `reject*`) → `sendText` / `sendFile` relayed as `receiveText` / `receiveFile`.
+- `public/app.js` slices files into 4 KB chunks, emits one `sendFile` per chunk and shows progress; the receiver collects chunks by index and triggers a download when all have arrived.
+- All traffic is relayed through the server; there is no WebRTC peer-to-peer path.
+
+## Tech stack
+
+- Runtime/Language: Node.js 18+, TypeScript 5.7 (run directly with `ts-node`)
+- Framework: Express 4, Socket.IO 4.8, `qrcode`
+- Frontend: vanilla HTML/CSS/JS in `public/`
+- Storage: none (in-memory device list only)
+- Infra/Tooling: `nodemon` for dev, GitHub Actions CI (`.github/workflows/ci.yml`: typecheck + compile)
 
 ## Getting started
 
-### Prerequisites
+### Requirements
 
-- [Node.js](https://nodejs.org/) 18 or newer and `npm`
-- Two or more devices on the **same LAN**
+- Node.js 18 or newer and `npm`
+- Two or more devices on the same LAN
 
 ### Install
 
@@ -71,92 +68,63 @@ npm install
 ### Run
 
 ```bash
-npm start
+npm start            # ts-node src/index.ts
 ```
 
-On startup the server prints every reachable LAN URL, e.g.:
+The server prints its reachable LAN URLs, for example:
 
 ```
 [*] Sendrop listening on :3000
 [*] Reachable at:
       http://192.168.1.42:3000
-      http://10.0.0.7:3000
 ```
 
-Open any of those URLs on the host PC in a browser — the root page shows a
-QR code pointing at the same URL so your phone can join with one scan. On
-the phone / other devices, open the printed LAN URL directly.
+Open `http://localhost:3000/` on the host to see the QR code; scan it or open the LAN URL directly on the other devices. Each device then shows up in the others' device list — tap a card, choose the Text or File tab, and send. The receiver gets an Accept / Reject prompt; accepted text opens in a pop-up with a Copy button, accepted files are downloaded automatically.
 
-### Configuration
+### Develop
 
-| Variable | Default | Meaning |
+```bash
+npm run dev          # nodemon + ts-node
+npm run typecheck    # tsc --noEmit
+npm run build        # compile to ./dist
+```
+
+`npm test` is not implemented.
+
+## Project structure
+
+```
+sendrop/
+├─ src/
+│  └─ index.ts        # Express + Socket.IO relay server
+├─ public/
+│  ├─ main.html       # device list + send/receive UI
+│  ├─ app.js          # client logic: discovery, handshake, chunked transfer
+│  ├─ style.css       # page styles
+│  ├─ global.css      # shared resets
+│  └─ local.css       # styles for the localhost QR page
+├─ .github/workflows/ci.yml
+├─ package.json
+└─ tsconfig.json
+```
+
+## Configuration
+
+| Variable | Default | Purpose |
 |---|---|---|
-| `PORT` | `3000` | TCP port for HTTP and Socket.IO. |
-| `SENDROP_MAX_BUFFER` | `67108864` (64 MB) | `maxHttpBufferSize` passed to Socket.IO. Raise this if your per-chunk size grows, or you see `Message too large` errors on big files. |
+| `PORT` | `3000` | TCP port for HTTP and Socket.IO |
+| `SENDROP_MAX_BUFFER` | `67108864` (64 MB) | `maxHttpBufferSize` passed to Socket.IO; raise it if you see `Message too large` |
 
 ```bash
 PORT=5000 SENDROP_MAX_BUFFER=134217728 npm start
 ```
 
-### Develop
-
-```bash
-npm run dev         # ts-node + nodemon
-npm run typecheck   # no-emit type check
-npm run build       # compile TS into ./dist
-```
-
-## Using the UI
-
-1. Open the LAN URL on two devices. Each one will see the other appear in
-   the device list.
-2. Tap the target device card. A **send** dialog opens.
-3. Switch between the **Text** and **File** tabs.
-4. Enter text or pick a file, then press **Send**. The receiver sees an
-   **Accept / Reject** prompt.
-5. On accept, text appears in a pop-up with a **Copy** button; files are
-   assembled and automatically downloaded.
-
-Close an alert with its **Close** button, or let informational toasts
-auto-dismiss after 3 seconds.
-
 ## Security notes
 
-- sendrop is designed for trusted LANs only. Anyone who can reach the port
-  can see connected devices and send them request prompts.
-- The server does not persist or log transferred content. User-Agent and
-  remote-IP strings are kept in memory only for the duration of a
-  connection.
-- There is no end-to-end encryption — rely on TLS in front of sendrop (e.g.
-  an nginx reverse proxy with a LAN cert) if you need confidentiality on an
-  untrusted network.
-
-## Project layout
-
-```
-sendrop/
-├─ src/
-│  └─ index.ts         # Express + Socket.IO server
-├─ public/
-│  ├─ main.html        # Device list + send/receive UI
-│  ├─ app.js           # Client-side logic
-│  ├─ style.css        # Page-specific styles
-│  ├─ global.css       # Shared resets
-│  └─ local.css        # Styles for the /-on-localhost QR page
-├─ package.json
-└─ tsconfig.json
-```
-
-## Contributing
-
-Issues and pull requests welcome. Before opening a PR please run:
-
-```bash
-npm run typecheck
-```
-
-and test a transfer in two browser tabs (or one tab + one phone) locally.
+- Anyone who can reach the port can see connected devices and send them prompts. Run it on trusted LANs only.
+- User-Agent and remote-IP strings are kept in memory only for the lifetime of a connection.
+- There is no end-to-end encryption; put TLS (e.g. a reverse proxy) in front of it if you need confidentiality.
 
 ## License
 
-`sendrop` is released under the [ISC License](LICENSE).
+Released under the [ISC License](LICENSE).
